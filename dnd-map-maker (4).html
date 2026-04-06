@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DnD Map Maker — Cartographer's Workshop</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Palatino Linotype', Palatino, serif; background: #1a1208; color: #e8d5a0; height: 100vh; overflow: hidden; }
+  #app { display: flex; height: 100vh; width: 100vw; }
+
+  #sidebar { width: 224px; min-width: 224px; background: #0f0b05; border-right: 1px solid #5a3a0a; display: flex; flex-direction: column; overflow-y: auto; z-index: 10; }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-track { background: #0f0b05; }
+  #sidebar::-webkit-scrollbar-thumb { background: #3a2a08; border-radius: 2px; }
+
+  #sidebar-header { padding: 14px 12px 10px; border-bottom: 1px solid #5a3a0a; background: #13100a; flex-shrink: 0; }
+  #sidebar-header h1 { font-size: 15px; color: #d4a840; letter-spacing: 1px; font-weight: normal; text-transform: uppercase; }
+  #sidebar-header p { font-size: 10px; color: #7a6030; margin-top: 2px; letter-spacing: 0.5px; }
+
+  .section { padding: 10px 10px 8px; border-bottom: 1px solid #2a1f08; flex-shrink: 0; }
+  .section-label { font-size: 9px; color: #7a6030; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 7px; font-family: sans-serif; }
+
+  .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .tool-btn { background: #1f1608; border: 1px solid #3a2a08; color: #c8b060; padding: 6px 4px; cursor: pointer; border-radius: 3px; font-size: 10px; font-family: sans-serif; text-align: center; transition: all 0.1s; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .tool-btn .icon { font-size: 15px; }
+  .tool-btn:hover { background: #2a1f08; border-color: #6a4a18; }
+  .tool-btn.active { background: #3a2808; border-color: #d4a840; color: #f0d070; }
+
+  .terrain-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+  .terrain-btn { width: 100%; aspect-ratio: 1; border: 2px solid transparent; cursor: pointer; border-radius: 3px; transition: all 0.12s; position: relative; }
+  .terrain-btn:hover { transform: scale(1.12); z-index: 1; }
+  .terrain-btn.active { border-color: #f0d070; box-shadow: 0 0 6px rgba(240,208,112,0.4); }
+  .terrain-btn[title]:hover::after { content: attr(title); position: absolute; left: 110%; top: 50%; transform: translateY(-50%); background: #0f0b05; border: 1px solid #5a3a0a; color: #e8d5a0; font-size: 9px; font-family: sans-serif; padding: 3px 6px; border-radius: 3px; white-space: nowrap; z-index: 100; pointer-events: none; }
+
+  .marker-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .marker-btn { background: #1f1608; border: 1px solid #3a2a08; color: #c8b060; padding: 5px 2px; cursor: pointer; border-radius: 3px; font-size: 9px; font-family: sans-serif; text-align: center; transition: all 0.1s; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .marker-btn .micon { font-size: 13px; }
+  .marker-btn:hover { background: #2a1f08; border-color: #6a4a18; }
+  .marker-btn.active { background: #3a2808; border-color: #d4a840; color: #f0d070; }
+
+  .action-btn { width: 100%; background: #1f1608; border: 1px solid #3a2a08; color: #c8b060; padding: 7px 6px; cursor: pointer; border-radius: 3px; font-size: 11px; font-family: sans-serif; text-align: center; transition: all 0.1s; margin-bottom: 4px; }
+  .action-btn:hover { background: #2a1f08; border-color: #6a4a18; }
+  .action-btn:last-child { margin-bottom: 0; }
+  .action-btn.danger { border-color: #5a1a08; color: #c06040; }
+  .action-btn.danger:hover { background: #2a1008; border-color: #8a2a10; }
+  .action-btn.success { border-color: #1a5a18; color: #60c060; }
+  .action-btn.success:hover { background: #0a2a08; border-color: #2a8a28; }
+
+  #fog-mode-bar { display: flex; gap: 0; border: 1px solid #3a2a08; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+  .fog-mode-btn { flex: 1; background: #1f1608; border: none; color: #6a5830; padding: 7px 2px; cursor: pointer; font-size: 9px; font-family: sans-serif; text-align: center; transition: all 0.15s; border-right: 1px solid #3a2a08; line-height: 1.4; }
+  .fog-mode-btn:last-child { border-right: none; }
+  .fog-mode-btn:hover { background: #2a1f08; color: #c8b060; }
+  .fog-mode-btn.mode-dm { background: #201a08; color: #c8a040; border-bottom: 2px solid #c8a040; }
+  .fog-mode-btn.mode-player { background: #080c18; color: #6090d0; border-bottom: 2px solid #4070c0; }
+  .fog-mode-btn.mode-reveal { background: #081808; color: #40c040; border-bottom: 2px solid #30a030; }
+
+  .slider-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .slider-row label { font-size: 9px; color: #7a6030; font-family: sans-serif; width: 50px; flex-shrink: 0; }
+  .slider-row input[type=range] { flex: 1; height: 3px; accent-color: #d4a840; cursor: pointer; }
+  .slider-row span { font-size: 9px; color: #a08040; font-family: sans-serif; width: 26px; text-align: right; }
+
+  select { width: 100%; background: #1f1608; border: 1px solid #3a2a08; color: #c8b060; padding: 5px; border-radius: 3px; font-size: 10px; font-family: sans-serif; margin-bottom: 5px; cursor: pointer; }
+  select:hover { border-color: #6a4a18; }
+
+  .token-colors { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tok-color { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform 0.1s; }
+  .tok-color:hover { transform: scale(1.2); }
+  .tok-color.active { border-color: #f0d070; }
+
+  #canvas-area { flex: 1; position: relative; overflow: hidden; background: #0a0805; }
+
+  #map-canvas { position: absolute; image-rendering: pixelated; image-rendering: crisp-edges; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+
+  /* Cursor variants */
+  #canvas-area.cursor-paint  #map-canvas { cursor: crosshair; }
+  #canvas-area.cursor-erase  #map-canvas { cursor: cell; }
+  #canvas-area.cursor-fog    #map-canvas { cursor: cell; }
+  #canvas-area.cursor-reveal #map-canvas { cursor: pointer; }
+  #canvas-area.cursor-token  #map-canvas { cursor: copy; }
+  #canvas-area.cursor-marker #map-canvas { cursor: copy; }
+  #canvas-area.cursor-vision #map-canvas { cursor: none; }
+  #canvas-area.cursor-door   #map-canvas { cursor: pointer; }
+
+  #status-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 26px; background: #0a0805; border-top: 1px solid #2a1f08; display: flex; align-items: center; padding: 0 12px; font-family: sans-serif; font-size: 10px; color: #6a5020; gap: 20px; z-index: 5; user-select: none; }
+  #status-bar span { color: #a08040; }
+  #status-bar .dim { color: #5a4018; }
+
+  /* Fog mode badge */
+  #fog-badge { display: none; position: absolute; top: 10px; left: 50%; transform: translateX(-50%); padding: 4px 16px; border-radius: 20px; font-family: sans-serif; font-size: 10px; z-index: 6; pointer-events: none; letter-spacing: 0.5px; white-space: nowrap; }
+  #fog-badge.show { display: block; }
+  #fog-badge.b-player { background: rgba(5,10,28,0.9); border: 1px solid #304880; color: #6090d0; }
+  #fog-badge.b-reveal { background: rgba(5,20,5,0.9); border: 1px solid #306030; color: #50c050; }
+
+  #zoom-controls { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
+  .zoom-btn { width: 28px; height: 28px; background: rgba(12,9,4,0.9); border: 1px solid #3a2a08; color: #c8b060; cursor: pointer; border-radius: 3px; font-size: 14px; font-family: sans-serif; display: flex; align-items: center; justify-content: center; transition: all 0.1s; }
+  .zoom-btn:hover { background: rgba(30,20,8,0.95); border-color: #6a4a18; }
+
+  #kbd-hints { position: absolute; bottom: 32px; left: 10px; font-family: sans-serif; font-size: 9px; color: #3a2808; line-height: 1.7; pointer-events: none; user-select: none; }
+  #kbd-hints kbd { background: #160e04; border: 1px solid #2a1a04; border-radius: 2px; padding: 0 3px; font-size: 8px; color: #5a4018; }
+
+  #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.78); z-index: 200; align-items: center; justify-content: center; }
+  #modal-overlay.open { display: flex; }
+  #modal { background: #1a1208; border: 1px solid #5a3a0a; border-radius: 6px; padding: 22px; width: 320px; max-height: 80vh; overflow-y: auto; font-family: sans-serif; box-shadow: 0 20px 60px rgba(0,0,0,0.8); }
+  #modal h2 { color: #d4a840; font-size: 14px; margin-bottom: 14px; font-weight: normal; letter-spacing: 1px; }
+  #modal input[type=text] { width: 100%; background: #0f0b05; border: 1px solid #5a3a0a; color: #e8d5a0; padding: 8px; border-radius: 3px; font-size: 12px; font-family: sans-serif; margin-bottom: 12px; outline: none; }
+  #modal input[type=text]:focus { border-color: #d4a840; }
+  #modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  #modal-btns button { background: #1f1608; border: 1px solid #3a2a08; color: #c8b060; padding: 7px 16px; cursor: pointer; border-radius: 3px; font-size: 11px; font-family: sans-serif; }
+  #modal-btns button:hover { background: #2a1f08; }
+  #modal-btns button.primary { border-color: #d4a840; color: #f0d070; }
+  #modal-btns button.primary:hover { background: #3a2808; }
+  #saves-list { max-height: 200px; overflow-y: auto; margin-bottom: 12px; }
+  #saves-list::-webkit-scrollbar { width: 3px; }
+  #saves-list::-webkit-scrollbar-thumb { background: #3a2a08; }
+  .save-item { display: flex; align-items: center; justify-content: space-between; padding: 7px 9px; border: 1px solid #2a1f08; border-radius: 3px; margin-bottom: 5px; font-size: 11px; color: #c8b060; background: #0f0b05; }
+  .save-item .save-meta { font-size: 9px; color: #6a5020; margin-top: 2px; }
+  .save-item-actions { display: flex; gap: 5px; }
+  .save-item-btn { background: none; border: 1px solid #3a2a08; color: #c8b060; padding: 3px 8px; cursor: pointer; border-radius: 2px; font-size: 9px; font-family: sans-serif; }
+  .save-item-btn:hover { background: #2a1f08; }
+  .save-item-btn.del { border-color: #5a1a08; color: #c06040; }
+  .save-item-btn.del:hover { background: #2a1008; }
+  .no-saves { color: #7a6030; font-size: 11px; text-align: center; padding: 16px 0; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h1>⚔ DnD Map Maker</h1>
+      <p>Cartographer's Workshop v1.3</p>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Tools</div>
+      <div class="tool-grid">
+        <button class="tool-btn active" data-tool="paint"  onclick="setTool('paint')"><span class="icon">🖌</span>Paint</button>
+        <button class="tool-btn"        data-tool="fill"   onclick="setTool('fill')"><span class="icon">🪣</span>Fill</button>
+        <button class="tool-btn"        data-tool="erase"  onclick="setTool('erase')"><span class="icon">⬛</span>Erase</button>
+        <button class="tool-btn"        data-tool="marker" onclick="setTool('marker')"><span class="icon">📍</span>Marker</button>
+        <button class="tool-btn"        data-tool="token"  onclick="setTool('token')"><span class="icon">🪙</span>Token</button>
+        <button class="tool-btn"        data-tool="fog"    onclick="setTool('fog')"><span class="icon">🌑</span>Add Fog</button>
+        <button class="tool-btn"        data-tool="door"   onclick="setTool('door')"><span class="icon">🚪</span>Door</button>
+        <button class="tool-btn"        data-tool="vision" onclick="setTool('vision')" style="grid-column:span 2;"><span class="icon">👁</span>Vision Reveal — click to uncover party view</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Terrain</div>
+      <div class="terrain-grid" id="terrain-grid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Markers</div>
+      <div class="marker-grid" id="marker-grid"></div>
+      <p style="font-size:9px;color:#4a3818;font-family:sans-serif;margin-top:6px;line-height:1.5;">Pick type → select Marker tool → click to place or remove.</p>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Token Color</div>
+      <div class="token-colors" id="token-colors"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Brush Size</div>
+      <div class="slider-row">
+        <label>Size</label>
+        <input type="range" min="1" max="7" value="1" id="brush-size" oninput="brushSize=+this.value;document.getElementById('brush-val').textContent=this.value+'×'+this.value">
+        <span id="brush-val">1×1</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Fog of War</div>
+      <div id="fog-mode-bar">
+        <button class="fog-mode-btn mode-dm" id="fog-btn-dm" onclick="setFogMode('dm')">🕯<br>DM</button>
+        <button class="fog-mode-btn" id="fog-btn-player" onclick="setFogMode('player')">👁<br>Player</button>
+      </div>
+      <p id="fog-hint" style="font-size:9px;color:#5a7030;font-family:sans-serif;margin-bottom:6px;line-height:1.5;">DM view: fog shown as blue tint.</p>
+      <button class="action-btn" onclick="setAllFog(true)" style="margin-top:0">☁ Fog Entire Map</button>
+      <button class="action-btn" onclick="setAllFog(false)">☀ Reveal Entire Map</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Vision Reveal</div>
+      <div class="slider-row">
+        <label>Radius</label>
+        <input type="range" min="1" max="12" value="5" id="vision-radius"
+               oninput="visionRadius=+this.value;updateVisionUI()">
+        <span id="vision-radius-val">5</span>
+      </div>
+      <p id="vision-hint" style="font-size:9px;color:#5a7030;font-family:sans-serif;margin-bottom:4px;line-height:1.5;">
+        5 tiles · 25 m · ~1 move
+      </p>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:2px;">
+        <button class="action-btn" style="flex:1;margin:0;font-size:9px;" onclick="setVisionPreset(3)">Torch<br><span style="color:#6a5020">3 tiles</span></button>
+        <button class="action-btn" style="flex:1;margin:0;font-size:9px;" onclick="setVisionPreset(5)">Darkvision<br><span style="color:#6a5020">5 tiles</span></button>
+        <button class="action-btn" style="flex:1;margin:0;font-size:9px;" onclick="setVisionPreset(7)">Scout<br><span style="color:#6a5020">7 tiles</span></button>
+      </div>
+      <p style="font-size:9px;color:#4a3818;font-family:sans-serif;margin-top:5px;line-height:1.5;">
+        Select Vision tool → hover to preview → click to reveal that area.
+      </p>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+        <input type="checkbox" id="use-los" checked onchange="useLOS=this.checked;draw()" style="accent-color:#d4a840;cursor:pointer;">
+        <label for="use-los" style="font-size:9px;color:#7a6030;font-family:sans-serif;cursor:pointer;">Wall-aware LOS (blocks through walls &amp; closed doors)</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Doors</div>
+      <p style="font-size:9px;color:#7a6030;font-family:sans-serif;margin-bottom:6px;line-height:1.6;">
+        <kbd style="background:#160e04;border:1px solid #2a1a04;border-radius:2px;padding:0 3px;font-size:8px;color:#5a4018;">D</kbd> Select Door tool<br>
+        <b style="color:#c8b060;">Left-click</b> to place or remove a door.<br>
+        <b style="color:#c8b060;">Right-click</b> any door to toggle open / closed.<br>
+        Orientation auto-detects from adjacent walls. Closed doors block LOS.
+      </p>
+      <div style="display:flex;gap:6px;align-items:center;font-family:sans-serif;font-size:9px;color:#7a6030;">
+        <div style="width:28px;height:14px;background:#7a4820;border:1px solid #5a3010;border-radius:2px;flex-shrink:0;position:relative;">
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;background:#c82020;"></div>
+        </div>
+        Closed — blocks LOS
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;font-family:sans-serif;font-size:9px;color:#7a6030;margin-top:4px;">
+        <div style="width:28px;height:14px;border:1px solid #3a2a08;border-radius:2px;flex-shrink:0;position:relative;">
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:6px;height:6px;border-radius:50%;border:1px solid rgba(100,200,80,0.6);"></div>
+        </div>
+        Open — LOS passes through
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Generate</div>
+      <select id="gen-type">
+        <option value="cave">Cave System</option>
+        <option value="dungeon">Dungeon Rooms</option>
+        <option value="building">Building / Inn</option>
+        <option value="forest">Forest Clearing</option>
+        <option value="village">Village Square</option>
+        <option value="ruins">Ancient Ruins</option>
+        <option value="coast">Coastal Map</option>
+      </select>
+      <div class="slider-row">
+        <label>Density</label>
+        <input type="range" min="25" max="80" value="50" id="gen-density" oninput="document.getElementById('den-val').textContent=this.value+'%'">
+        <span id="den-val">50%</span>
+      </div>
+      <button class="action-btn" onclick="generateMap()">🎲 Generate Random</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Map</div>
+      <button class="action-btn success" onclick="downloadMap()">⬇ Download PNG</button>
+      <button class="action-btn"         onclick="downloadMapNoFog()">⬇ Download (No Fog)</button>
+      <button class="action-btn"         onclick="openSaveModal()">💾 Save Map</button>
+      <button class="action-btn"         onclick="openLoadModal()">📂 Load Map</button>
+      <button class="action-btn"         onclick="exportJSON()">📤 Export JSON</button>
+      <button class="action-btn"         onclick="importJSON()">📥 Import JSON</button>
+      <button class="action-btn danger"  onclick="clearMap()">✕ Clear Map</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Grid Size</div>
+      <select id="grid-size" onchange="changeGridSize()">
+        <option value="20">20 × 20 (Small)</option>
+        <option value="30" selected>30 × 30 (Medium)</option>
+        <option value="40">40 × 40 (Large)</option>
+        <option value="50">50 × 50 (XL)</option>
+        <option value="60">60 × 60 (XXL)</option>
+        <option value="80">80 × 80 (Huge)</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Scale & Distance</div>
+      <div class="slider-row">
+        <label>m / tile</label>
+        <input type="range" min="1" max="100" value="5" step="1" id="scale-meters"
+               oninput="scaleMeters=+this.value;updateScaleUI()">
+        <span id="scale-val">5m</span>
+      </div>
+      <p id="scale-hint" style="font-size:9px;color:#7a6030;font-family:sans-serif;margin-bottom:6px;line-height:1.5;">
+        1 tile = 5m · 1 move = 6 tiles
+      </p>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px;">
+        <button class="action-btn" style="flex:1;margin:0;font-size:9px;" onclick="setPresetScale(1.5,'ft')">5 ft</button>
+        <button class="action-btn" style="flex:1;margin:0;font-size:9px;" onclick="setPresetScale(3,'ft')">10 ft</button>
+        <button class="action-btn" style="flex:1;margin:0;font-size:9px;" onclick="setPresetScale(5,'m')">5 m</button>
+        <button class="action-btn" style="flex:1;margin:0;font-size:9px;" onclick="setPresetScale(10,'m')">10 m</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <span style="font-size:9px;color:#7a6030;font-family:sans-serif;">Units</span>
+        <select id="scale-unit" onchange="scaleUnit=this.value;updateScaleUI()" style="margin:0;flex:1;">
+          <option value="m">Meters (m)</option>
+          <option value="ft">Feet (ft)</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="show-scalebar" checked onchange="showScaleBar=this.checked;draw()" style="accent-color:#d4a840;cursor:pointer;">
+        <label for="show-scalebar" style="font-size:9px;color:#7a6030;font-family:sans-serif;cursor:pointer;">Show scale bar on map</label>
+      </div>
+    </div>
+  </div>
+
+  <div id="canvas-area" class="cursor-paint">
+    <canvas id="map-canvas"></canvas>
+    <div id="fog-badge"></div>
+    <div id="zoom-controls">
+      <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
+      <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+      <button class="zoom-btn" onclick="zoomFit()" title="Fit" style="font-size:10px;">⊡</button>
+    </div>
+    <div id="kbd-hints">
+      <kbd>P</kbd> Paint &nbsp;<kbd>F</kbd> Fill &nbsp;<kbd>E</kbd> Erase &nbsp;<kbd>M</kbd> Marker &nbsp;<kbd>T</kbd> Token &nbsp;<kbd>G</kbd> Fog &nbsp;<kbd>V</kbd> Vision &nbsp;<kbd>D</kbd> Door<br>
+      <kbd>+</kbd>/<kbd>−</kbd> Zoom &nbsp;<kbd>Ctrl+S</kbd> Save &nbsp;<kbd>Ctrl+Z</kbd> Undo &nbsp;<kbd>MMB</kbd> Pan &nbsp;<kbd>RClick</kbd> Toggle door
+    </div>
+    <div id="status-bar">
+      <span id="s-tool">Tool: Paint</span>
+      <span id="s-sub">Terrain: Stone Floor</span>
+      <span id="s-pos" class="dim">— , —</span>
+      <span id="s-fog">Fog: DM View</span>
+      <span id="s-zoom" class="dim">100%</span>
+    </div>
+  </div>
+</div>
+
+<div id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div id="modal">
+    <h2 id="modal-title"></h2>
+    <div id="modal-body"></div>
+    <div id="modal-btns">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="primary" id="modal-confirm">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────
+//  DATA
+// ─────────────────────────────────────────────────────────
+const TERRAINS = [
+  {id:'void',    label:'Void',        color:'#080604'},
+  {id:'stone',   label:'Stone Floor', color:'#5a5650'},
+  {id:'dirt',    label:'Dirt',        color:'#7a5a30'},
+  {id:'grass',   label:'Grass',       color:'#3a6020'},
+  {id:'water',   label:'Water',       color:'#1a3a6a'},
+  {id:'wall',    label:'Wall',        color:'#2a2520'},
+  {id:'wood',    label:'Wood Floor',  color:'#8a6030'},
+  {id:'sand',    label:'Sand',        color:'#c8a060'},
+  {id:'lava',    label:'Lava',        color:'#c82010'},
+  {id:'ice',     label:'Ice',         color:'#90c0d0'},
+  {id:'road',    label:'Road',        color:'#9a8a70'},
+  {id:'cave',    label:'Cave Rock',   color:'#1a1510'},
+  {id:'swamp',   label:'Swamp',       color:'#3a4a18'},
+  {id:'magicfl', label:'Magic Floor', color:'#4a2a6a'},
+  {id:'deepwtr', label:'Deep Water',  color:'#08203a'},
+  {id:'carpet',  label:'Carpet',      color:'#8a2020'},
+];
+
+const MARKER_TYPES = [
+  {id:'entrance', label:'Entrance', emoji:'🟢'},
+  {id:'exit',     label:'Exit',     emoji:'🔴'},
+  {id:'loot',     label:'Loot',     emoji:'💰'},
+  {id:'trap',     label:'Trap',     emoji:'⚠'},
+  {id:'boss',     label:'Boss',     emoji:'💀'},
+  {id:'secret',   label:'Secret',   emoji:'🔮'},
+  {id:'stairs_d', label:'Down',     emoji:'⬇'},
+  {id:'stairs_u', label:'Up',       emoji:'⬆'},
+  {id:'note',     label:'Note',     emoji:'📝'},
+];
+
+const TOKEN_COLORS = ['#e04040','#40a040','#4080e0','#e0c040','#a040e0','#e08040','#40d0d0','#e080a0'];
+const TOKEN_LABELS = '123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+// ─────────────────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────────────────
+let gridW=30, gridH=30, tileSize=24;
+let cells=[], fog=[], tokens=[], markers=[];
+let currentTool='paint', currentTerrain=1, currentMarkerType='entrance', currentTokenColor=0;
+let brushSize=1;
+// fogMode: 'dm' = tinted overlay (DM can see terrain) | 'player' = solid black | 'reveal' = solid black + click removes
+let fogMode='dm';
+let isPainting=false, panX=0, panY=0, isPanning=false, panStart={};
+let manualZoom=null, undoStack=[];
+const MAX_UNDO=30;
+
+// Scale settings
+let scaleMeters=5;       // metres per tile
+let scaleUnit='m';       // 'm' or 'ft'
+let showScaleBar=true;
+const ENTRANCE_REVEAL_RADIUS=2; // tiles revealed around each entrance marker
+
+// Vision reveal
+let visionRadius=5;
+let hoverCell={x:-1,y:-1}; // for vision preview overlay
+let useLOS=true;
+
+// Doors: {x, y, open:bool, dir:'h'|'v'}
+let doors=[];
+
+// Blocking terrain indices for LOS
+const LOS_BLOCKERS=new Set([5,11]); // wall, cave rock
+
+const canvas=document.getElementById('map-canvas');
+const ctx=canvas.getContext('2d');
+const canvasArea=document.getElementById('canvas-area');
+
+// ─────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────
+function initGrid(){
+  cells=Array.from({length:gridH},()=>Array(gridW).fill(0));
+  fog=Array.from({length:gridH},()=>Array(gridW).fill(false));
+  tokens=[]; markers=[]; doors=[]; manualZoom=null; resize();
+}
+
+function resize(){
+  const aw=canvasArea.clientWidth, ah=canvasArea.clientHeight-26;
+  if(!manualZoom) tileSize=Math.max(8,Math.min(40,Math.floor(Math.min(aw/gridW,ah/gridH))));
+  canvas.width=gridW*tileSize; canvas.height=gridH*tileSize;
+  if(!isPanning){ panX=Math.floor((aw-canvas.width)/2); panY=Math.floor((ah-canvas.height)/2); }
+  canvas.style.left=panX+'px'; canvas.style.top=panY+'px';
+  updateZoomStatus(); draw();
+}
+
+// ─────────────────────────────────────────────────────────
+//  DRAW
+// ─────────────────────────────────────────────────────────
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let y=0;y<gridH;y++) for(let x=0;x<gridW;x++) drawCell(x,y);
+
+  // Markers — hidden behind solid fog in player mode
+  markers.forEach(m=>{
+    if(fogMode!=='dm' && fog[m.y]?.[m.x]) return;
+    drawMarker(m.x, m.y, m.type);
+  });
+
+  // Tokens — same
+  tokens.forEach(t=>{
+    if(fogMode!=='dm' && fog[t.y]?.[t.x]) return;
+    drawToken(t);
+  });
+
+  // Doors — always drawn (DM sees all; players see if not fogged)
+  doors.forEach(d=>{
+    if(fogMode!=='dm' && fog[d.y]?.[d.x]) return;
+    drawDoor(d);
+  });
+
+  // In DM mode: draw blue hatched tint over fogged cells so DM can see them
+  if(fogMode==='dm'){
+    for(let y=0;y<gridH;y++){
+      for(let x=0;x<gridW;x++){
+        if(!fog[y][x]) continue;
+        const px=x*tileSize, py=y*tileSize;
+        ctx.fillStyle='rgba(15,30,90,0.5)';
+        ctx.fillRect(px,py,tileSize,tileSize);
+        ctx.strokeStyle='rgba(30,60,150,0.35)'; ctx.lineWidth=0.5;
+        ctx.beginPath(); ctx.moveTo(px,py+tileSize); ctx.lineTo(px+tileSize,py); ctx.stroke();
+      }
+    }
+  }
+
+  // Draw a soft green halo around entrance-revealed zone boundary (DM and player modes)
+  markers.filter(m=>m.type==='entrance').forEach(({x:ex,y:ey})=>{
+    const r=ENTRANCE_REVEAL_RADIUS;
+    ctx.save();
+    ctx.strokeStyle='rgba(40,180,60,0.35)';
+    ctx.lineWidth=Math.max(1.5, tileSize*0.08);
+    ctx.setLineDash([tileSize*0.2, tileSize*0.15]);
+    ctx.beginPath();
+    ctx.arc((ex+0.5)*tileSize,(ey+0.5)*tileSize,(r+0.45)*tileSize,0,Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  });
+
+  drawGrid();
+  drawVisionPreview();
+  drawScaleBar();
+}
+
+function drawCell(x,y){
+  const t=TERRAINS[cells[y][x]]||TERRAINS[0];
+  const px=x*tileSize, py=y*tileSize;
+
+  // Solid black fog: draw black and return — nothing visible underneath
+  if(fogMode!=='dm' && fog[y][x]){
+    ctx.fillStyle='#000';
+    ctx.fillRect(px,py,tileSize,tileSize);
+    return;
+  }
+
+  ctx.fillStyle=t.color;
+  ctx.fillRect(px,py,tileSize,tileSize);
+  if(tileSize>=10) drawPattern(t.id,px,py);
+}
+
+function drawGrid(){
+  ctx.strokeStyle='rgba(0,0,0,0.22)'; ctx.lineWidth=0.5;
+  for(let x=0;x<=gridW;x++){ctx.beginPath();ctx.moveTo(x*tileSize,0);ctx.lineTo(x*tileSize,canvas.height);ctx.stroke();}
+  for(let y=0;y<=gridH;y++){ctx.beginPath();ctx.moveTo(0,y*tileSize);ctx.lineTo(canvas.width,y*tileSize);ctx.stroke();}
+}
+
+// ─────────────────────────────────────────────────────────
+//  VISION PREVIEW OVERLAY
+// ─────────────────────────────────────────────────────────
+function drawVisionPreview(){
+  if(currentTool!=='vision') return;
+  const{x:hx,y:hy}=hoverCell;
+  if(!inBounds(hx,hy)) return;
+
+  const r=visionRadius;
+  const visSet=computeVisibleSet(hx,hy,r);
+  ctx.save();
+
+  // Shade each tile in the visible set
+  for(let dy=-r;dy<=r;dy++){
+    for(let dx=-r;dx<=r;dx++){
+      const nx=hx+dx,ny=hy+dy;
+      if(!inBounds(nx,ny)) continue;
+      if(!visSet.has(nx+','+ny)) continue;
+      const px=nx*tileSize,py=ny*tileSize;
+      ctx.fillStyle=fog[ny][nx]
+        ? 'rgba(180,120,20,0.38)'    // amber: would be newly revealed
+        : 'rgba(180,180,60,0.10)';   // yellow tint: already visible
+      ctx.fillRect(px,py,tileSize,tileSize);
+    }
+  }
+
+  // Draw the radius circle outline
+  const cx=(hx+0.5)*tileSize, cy=(hy+0.5)*tileSize;
+  ctx.strokeStyle='rgba(220,160,40,0.65)';
+  ctx.lineWidth=Math.max(1.5,tileSize*0.08);
+  ctx.setLineDash([tileSize*0.25,tileSize*0.15]);
+  ctx.beginPath();
+  ctx.arc(cx,cy,(r+0.5)*tileSize,0,Math.PI*2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw LOS shadow (dark wash over tiles in range but NOT visible due to walls)
+  if(useLOS){
+    for(let dy=-r;dy<=r;dy++){
+      for(let dx=-r;dx<=r;dx++){
+        const nx=hx+dx,ny=hy+dy;
+        if(!inBounds(nx,ny)) continue;
+        if(dx*dx+dy*dy>r*r+r) continue;
+        if(visSet.has(nx+','+ny)) continue;
+        const px=nx*tileSize,py=ny*tileSize;
+        ctx.fillStyle='rgba(0,0,0,0.22)';
+        ctx.fillRect(px,py,tileSize,tileSize);
+      }
+    }
+  }
+
+  // Crosshair at party position
+  ctx.strokeStyle='rgba(240,200,60,0.9)';
+  ctx.lineWidth=Math.max(1,tileSize*0.07);
+  const arm=tileSize*0.38;
+  ctx.beginPath();
+  ctx.moveTo(cx-arm,cy); ctx.lineTo(cx+arm,cy);
+  ctx.moveTo(cx,cy-arm); ctx.lineTo(cx,cy+arm);
+  ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,tileSize*0.18,0,Math.PI*2); ctx.stroke();
+
+  // Label: count newly revealed tiles
+  let newCount=0;
+  visSet.forEach(k=>{
+    const[nx,ny]=k.split(',').map(Number);
+    if(inBounds(nx,ny)&&fog[ny][nx]) newCount++;
+  });
+
+  if(tileSize>=10){
+    const distM=r*scaleMeters;
+    const unitStr=scaleUnit==='ft'?`${Math.round(distM*3.281)} ft`:`${distM} m`;
+    const losStr=useLOS?' · LOS':'';
+    const label=newCount>0?`Reveal ${newCount} tiles · ${unitStr} range${losStr}`:`${unitStr} range${losStr} — nothing new`;
+    ctx.font=`${Math.max(9,Math.floor(tileSize*0.36))}px sans-serif`;
+    const tw=ctx.measureText(label).width+16;
+    let lx=cx-tw/2, ly=cy-(r+1.2)*tileSize-28;
+    if(ly<4) ly=cy+(r+1.4)*tileSize+4;
+    lx=Math.max(4,Math.min(canvas.width-tw-4,lx));
+    ctx.fillStyle='rgba(5,4,2,0.8)';
+    roundRect(ctx,lx,ly,tw,20,4); ctx.fill();
+    ctx.fillStyle='#e8d5a0';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(label,lx+tw/2,ly+10);
+  }
+
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────
+//  LINE OF SIGHT ENGINE
+// ─────────────────────────────────────────────────────────
+
+// Returns true if cell (tx,ty) is a LOS blocker
+function isBlocker(x,y){
+  if(!inBounds(x,y)) return true;
+  if(LOS_BLOCKERS.has(cells[y][x])) return true;
+  // Closed door on this cell blocks
+  if(doors.some(d=>d.x===x&&d.y===y&&!d.open)) return true;
+  return false;
+}
+
+// DDA raycast: can origin (ox,oy) see target (tx,ty)?
+// Returns true if unobstructed. Checks intermediate cells only (not origin/target).
+function hasLOS(ox,oy,tx,ty){
+  if(ox===tx&&oy===ty) return true;
+  const dx=tx-ox, dy=ty-oy;
+  const steps=Math.max(Math.abs(dx),Math.abs(dy))*2+1;
+  for(let i=1;i<steps-1;i++){
+    const t=i/steps;
+    const cx=Math.floor(ox+dx*t+0.5);
+    const cy=Math.floor(oy+dy*t+0.5);
+    if(cx===ox&&cy===oy) continue;
+    if(cx===tx&&cy===ty) continue;
+    if(isBlocker(cx,cy)) return false;
+  }
+  // Also check if the target itself is a blocker — we can see ITS tile but not past it
+  return true;
+}
+
+// Build set of visible cell keys from origin (ox,oy) within radius r
+function computeVisibleSet(ox,oy,r){
+  const vis=new Set();
+  // Always see self
+  vis.add(ox+','+oy);
+  for(let dy=-r;dy<=r;dy++){
+    for(let dx=-r;dx<=r;dx++){
+      const nx=ox+dx,ny=oy+dy;
+      if(!inBounds(nx,ny)) continue;
+      if(dx*dx+dy*dy>r*r+r) continue; // circular check with small buffer
+      if(!useLOS||hasLOS(ox,oy,nx,ny)) vis.add(nx+','+ny);
+    }
+  }
+  return vis;
+}
+
+// Perform the actual vision reveal at a cell
+function doVisionReveal(x,y){
+  const vis=computeVisibleSet(x,y,visionRadius);
+  let anyChanged=false;
+  vis.forEach(k=>{
+    const[nx,ny]=k.split(',').map(Number);
+    if(fog[ny]?.[nx]){fog[ny][nx]=false;anyChanged=true;}
+  });
+  return anyChanged;
+}
+
+function updateVisionUI(){
+  const r=visionRadius;
+  document.getElementById('vision-radius-val').textContent=r;
+  const distM=r*scaleMeters;
+  const unitStr=scaleUnit==='ft'?`${Math.round(distM*3.281)} ft`:`${distM} m`;
+  const moves=(distM/30).toFixed(1).replace(/\.0$/,'');
+  document.getElementById('vision-hint').textContent=`${r} tiles · ${unitStr} · ~${moves} move${moves==='1'?'':'s'}`;
+  draw();
+}
+
+function setVisionPreset(r){
+  visionRadius=r;
+  document.getElementById('vision-radius').value=r;
+  updateVisionUI();
+  setTool('vision');
+}
+
+// ─────────────────────────────────────────────────────────
+//  SCALE BAR
+// ─────────────────────────────────────────────────────────
+function drawScaleBar(){
+  if(!showScaleBar) return;
+
+  // Choose a nice round number of tiles: aim for ~20% of canvas width
+  const targetPx = canvas.width * 0.22;
+  const rawTiles = targetPx / tileSize;
+  // Round to nearest: 1,2,5,10,20,50
+  const niceSteps=[1,2,5,10,20,50,100];
+  let barTiles = niceSteps.reduce((best,v)=>Math.abs(v-rawTiles)<Math.abs(best-rawTiles)?v:best, niceSteps[0]);
+  barTiles = Math.max(1, Math.min(barTiles, gridW));
+
+  const barPx   = barTiles * tileSize;
+  const distVal = barTiles * scaleMeters;
+  const moveVal = distVal / 30; // movement actions (30m per action)
+
+  // Label strings
+  const unitLabel = scaleUnit==='ft'
+    ? `${Math.round(distVal * 3.281)} ft`
+    : `${distVal} m`;
+  const moveLabel = `${moveVal % 1===0 ? moveVal : moveVal.toFixed(1)} move${moveVal===1?'':'s'}`;
+
+  // Position: bottom-left of canvas with padding
+  const margin = 10;
+  const barH   = Math.max(6, tileSize * 0.22);
+  const barY   = canvas.height - margin - barH - 18;
+  const barX   = margin;
+
+  ctx.save();
+
+  // Backing pill
+  const padX=8, padY=5;
+  ctx.fillStyle='rgba(5,4,2,0.72)';
+  const pillW=barPx+padX*2, pillH=barH+26+padY*2;
+  roundRect(ctx, barX-padX, barY-padY-14, pillW, pillH, 4);
+  ctx.fill();
+
+  // Distance label above bar
+  ctx.fillStyle='#e8d5a0';
+  ctx.font=`500 ${Math.max(9,Math.floor(tileSize*0.38))}px 'Palatino Linotype',serif`;
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  ctx.fillText(unitLabel, barX, barY-3);
+
+  // Movement hint (smaller, muted)
+  ctx.fillStyle='#8a7040';
+  ctx.font=`${Math.max(7,Math.floor(tileSize*0.28))}px sans-serif`;
+  ctx.fillText(moveLabel, barX + ctx.measureText(unitLabel).width + 6, barY-3);
+
+  // Scale bar: alternating black/white segments (classic cartographic style)
+  const segs = Math.min(barTiles, 5); // max 5 alternating segments
+  const segPx = barPx / segs;
+  for(let i=0;i<segs;i++){
+    ctx.fillStyle = i%2===0 ? '#e8d5a0' : '#2a2010';
+    ctx.fillRect(barX + i*segPx, barY, segPx, barH);
+  }
+
+  // Bar border
+  ctx.strokeStyle='#a08040'; ctx.lineWidth=1;
+  ctx.strokeRect(barX, barY, barPx, barH);
+
+  // Tick labels: 0 at left, halfway, and full distance
+  ctx.fillStyle='#e8d5a0';
+  ctx.font=`${Math.max(7,Math.floor(tileSize*0.28))}px sans-serif`;
+  ctx.textAlign='center';
+  const tickY = barY + barH + 10;
+  [[0,'0'], [barPx/2, scaleUnit==='ft'?`${Math.round(distVal/2*3.281)} ft`:`${distVal/2} m`], [barPx, unitLabel]].forEach(([tx,label])=>{
+    ctx.beginPath(); ctx.moveTo(barX+tx, barY+barH); ctx.lineTo(barX+tx, barY+barH+5);
+    ctx.strokeStyle='#a08040'; ctx.lineWidth=0.8; ctx.stroke();
+    ctx.fillStyle='#e8d5a0'; ctx.fillText(label, barX+tx, tickY);
+  });
+
+  // Tile size info
+  ctx.fillStyle='#6a5020';
+  ctx.font=`${Math.max(7,Math.floor(tileSize*0.26))}px sans-serif`;
+  ctx.textAlign='left';
+  const tileLabel = scaleUnit==='ft'
+    ? `1 sq = ${Math.round(scaleMeters*3.281)} ft`
+    : `1 sq = ${scaleMeters} m`;
+  ctx.fillText(tileLabel, barX+barPx+8, barY+barH/2+3);
+
+  ctx.restore();
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+// ─────────────────────────────────────────────────────────
+//  ENTRANCE REVEAL
+// ─────────────────────────────────────────────────────────
+function revealAroundEntrances(){
+  const entrances = markers.filter(m=>m.type==='entrance');
+  if(!entrances.length) return;
+  entrances.forEach(({x,y})=>{
+    for(let dy=-ENTRANCE_REVEAL_RADIUS; dy<=ENTRANCE_REVEAL_RADIUS; dy++){
+      for(let dx=-ENTRANCE_REVEAL_RADIUS; dx<=ENTRANCE_REVEAL_RADIUS; dx++){
+        // Circular reveal
+        if(dx*dx+dy*dy <= ENTRANCE_REVEAL_RADIUS*ENTRANCE_REVEAL_RADIUS+1){
+          const nx=x+dx, ny=y+dy;
+          if(inBounds(nx,ny)) fog[ny][nx]=false;
+        }
+      }
+    }
+  });
+}
+
+// Scale UI helpers
+function updateScaleUI(){
+  const m=scaleMeters;
+  const ft=Math.round(m*3.281);
+  document.getElementById('scale-val').textContent = scaleUnit==='ft' ? `${ft}ft` : `${m}m`;
+  const moveTiles = Math.round(30/m);
+  const unitStr = scaleUnit==='ft' ? `${ft} ft` : `${m} m`;
+  document.getElementById('scale-hint').textContent = `1 tile = ${unitStr} · 1 move = ${moveTiles} tile${moveTiles===1?'':'s'}`;
+  document.getElementById('s-zoom').textContent = Math.round(tileSize/24*100)+'%';
+  updateVisionUI();
+}
+
+function setPresetScale(meters, unit){
+  scaleMeters = meters;
+  scaleUnit   = unit;
+  document.getElementById('scale-meters').value = meters;
+  document.getElementById('scale-unit').value   = unit;
+  updateScaleUI();
+}
+
+function drawToken(t){
+  if(!inBounds(t.x,t.y)) return;
+  const px=t.x*tileSize+tileSize/2, py=t.y*tileSize+tileSize/2, r=tileSize*0.38;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2);
+  ctx.fillStyle=t.color; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.8)'; ctx.lineWidth=Math.max(1,tileSize*0.06); ctx.stroke();
+  if(tileSize>12){
+    ctx.fillStyle='#fff'; ctx.font=`bold ${Math.max(8,Math.floor(tileSize*0.34))}px sans-serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(t.label,px,py);
+  }
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────
+//  DOOR DRAWING
+// ─────────────────────────────────────────────────────────
+function drawDoor(d){
+  const sz=tileSize;
+  const px=d.x*sz, py=d.y*sz;
+  const cx=px+sz/2, cy=py+sz/2;
+  ctx.save();
+
+  if(d.open){
+    // Open door: two short segments pushed to the sides, gap in the middle
+    const gap=sz*0.38;
+    const thick=Math.max(2, sz*0.1);
+    ctx.strokeStyle='#c08040';
+    ctx.lineWidth=thick;
+    ctx.lineCap='round';
+    if(d.dir==='h'){
+      // Horizontal wall — door runs left-right, open leaves gaps top/bottom
+      ctx.beginPath(); ctx.moveTo(px+sz*0.05, cy); ctx.lineTo(px+sz*0.5-gap/2, cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px+sz*0.5+gap/2, cy); ctx.lineTo(px+sz*0.95, cy); ctx.stroke();
+      // Hinges
+      ctx.strokeStyle='rgba(160,100,30,0.5)'; ctx.lineWidth=Math.max(1,sz*0.06);
+      ctx.beginPath(); ctx.moveTo(px+sz*0.5-gap/2,cy-sz*0.28); ctx.lineTo(px+sz*0.5-gap/2,cy+sz*0.28); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px+sz*0.5+gap/2,cy-sz*0.28); ctx.lineTo(px+sz*0.5+gap/2,cy+sz*0.28); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(cx, py+sz*0.05); ctx.lineTo(cx, py+sz*0.5-gap/2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, py+sz*0.5+gap/2); ctx.lineTo(cx, py+sz*0.95); ctx.stroke();
+      ctx.strokeStyle='rgba(160,100,30,0.5)'; ctx.lineWidth=Math.max(1,sz*0.06);
+      ctx.beginPath(); ctx.moveTo(cx-sz*0.28,py+sz*0.5-gap/2); ctx.lineTo(cx+sz*0.28,py+sz*0.5-gap/2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-sz*0.28,py+sz*0.5+gap/2); ctx.lineTo(cx+sz*0.28,py+sz*0.5+gap/2); ctx.stroke();
+    }
+    // Small "open" arc indicator
+    ctx.strokeStyle='rgba(100,200,80,0.5)'; ctx.lineWidth=Math.max(1,sz*0.06);
+    ctx.beginPath(); ctx.arc(cx,cy,sz*0.18,0,Math.PI*2); ctx.stroke();
+  } else {
+    // Closed door: solid bar across the tile
+    const thick=Math.max(3, sz*0.18);
+    ctx.fillStyle='#7a4820';
+    ctx.strokeStyle='#5a3010';
+    ctx.lineWidth=Math.max(1,sz*0.05);
+    if(d.dir==='h'){
+      const barH=thick;
+      ctx.fillRect(px+sz*0.04, cy-barH/2, sz*0.92, barH);
+      ctx.strokeRect(px+sz*0.04, cy-barH/2, sz*0.92, barH);
+      // Door handle
+      ctx.fillStyle='#d0a040';
+      ctx.beginPath(); ctx.arc(cx+sz*0.22, cy, Math.max(1.5,sz*0.07), 0, Math.PI*2); ctx.fill();
+    } else {
+      const barW=thick;
+      ctx.fillRect(cx-barW/2, py+sz*0.04, barW, sz*0.92);
+      ctx.strokeRect(cx-barW/2, py+sz*0.04, barW, sz*0.92);
+      ctx.fillStyle='#d0a040';
+      ctx.beginPath(); ctx.arc(cx, cy+sz*0.22, Math.max(1.5,sz*0.07), 0, Math.PI*2); ctx.fill();
+    }
+    // Small padlock dot
+    ctx.fillStyle='rgba(220,60,60,0.8)';
+    ctx.beginPath(); ctx.arc(cx,cy,Math.max(1.5,sz*0.07),0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────
+//  MARKER DRAWING
+// ─────────────────────────────────────────────────────────
+function drawMarker(x,y,type){
+  const sz=tileSize, px=x*sz, py=y*sz;
+  const cx=px+sz/2, cy=py+sz/2, r=sz*0.37;
+  ctx.save();
+  ctx.shadowBlur=0;
+
+  switch(type){
+    case 'entrance':{
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.fillStyle='#0e4a14'; ctx.fill();
+      ctx.strokeStyle='#40e050'; ctx.lineWidth=Math.max(1.5,sz*0.09); ctx.stroke();
+      _markerText(cx,cy,sz,'IN','#90ffa0');
+      break;
+    }
+    case 'exit':{
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.fillStyle='#4a0e0e'; ctx.fill();
+      ctx.strokeStyle='#e04040'; ctx.lineWidth=Math.max(1.5,sz*0.09); ctx.stroke();
+      _markerText(cx,cy,sz,'OUT','#ffa0a0',0.28);
+      break;
+    }
+    case 'loot':{
+      // Treasure chest
+      const hw=sz*0.32, hh=sz*0.25, bx=cx-hw, by_=cy-hh*0.3;
+      ctx.fillStyle='#7a4010';
+      ctx.beginPath(); ctx.rect(bx,by_,hw*2,hh*1.3); ctx.fill();
+      ctx.fillStyle='#c07020';
+      ctx.beginPath(); ctx.ellipse(cx,by_,hw,hh*0.8,0,Math.PI,0); ctx.fill();
+      // Metal band
+      ctx.strokeStyle='#d0a020'; ctx.lineWidth=Math.max(0.8,sz*0.05);
+      ctx.beginPath(); ctx.moveTo(bx,by_+hh*0.5); ctx.lineTo(bx+hw*2,by_+hh*0.5); ctx.stroke();
+      // Latch
+      ctx.fillStyle='#f0d040'; ctx.beginPath(); ctx.arc(cx,by_+hh*0.9,sz*0.07,0,Math.PI*2); ctx.fill();
+      // Sparkle
+      ctx.strokeStyle='#f0d040'; ctx.lineWidth=Math.max(0.5,sz*0.04);
+      const sx=cx+hw*0.85, sy=cy-hh*0.9;
+      ctx.beginPath(); ctx.moveTo(sx,sy-sz*0.1); ctx.lineTo(sx,sy+sz*0.1); ctx.moveTo(sx-sz*0.1,sy); ctx.lineTo(sx+sz*0.1,sy); ctx.stroke();
+      break;
+    }
+    case 'trap':{
+      // Warning triangle
+      ctx.beginPath(); ctx.moveTo(cx,cy-r); ctx.lineTo(cx+r*0.88,cy+r*0.5); ctx.lineTo(cx-r*0.88,cy+r*0.5); ctx.closePath();
+      ctx.fillStyle='#a06800'; ctx.fill();
+      ctx.strokeStyle='#f0b000'; ctx.lineWidth=Math.max(1.5,sz*0.07); ctx.stroke();
+      _markerText(cx,cy+sz*0.06,sz,'!','#fff8c0',0.42);
+      break;
+    }
+    case 'boss':{
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.fillStyle='#200808'; ctx.fill();
+      ctx.strokeStyle='#c02020'; ctx.lineWidth=Math.max(1.5,sz*0.09); ctx.stroke();
+      // skull
+      ctx.fillStyle='#e08080'; ctx.font=`${Math.max(8,Math.floor(sz*0.46))}px sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('☠',cx,cy+sz*0.02);
+      break;
+    }
+    case 'secret':{
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.fillStyle='#140820'; ctx.fill();
+      ctx.strokeStyle='#7030c0'; ctx.lineWidth=Math.max(1.5,sz*0.08); ctx.stroke();
+      _markerText(cx,cy+sz*0.03,sz,'?','#c090f0',0.42);
+      break;
+    }
+    case 'stairs_d':{
+      _drawStairs(px,py,sz,'#5a5050','#f0d070','▼',false);
+      break;
+    }
+    case 'stairs_u':{
+      _drawStairs(px,py,sz,'#7a7070','#a0d0ff','▲',true);
+      break;
+    }
+    case 'note':{
+      const nw=sz*0.56, nh=sz*0.52, nx=cx-nw/2, ny=cy-nh/2;
+      ctx.fillStyle='#c8b040'; ctx.beginPath(); ctx.rect(nx,ny,nw,nh); ctx.fill();
+      // Folded corner
+      ctx.fillStyle='#a09030'; ctx.beginPath(); ctx.moveTo(nx+nw-sz*0.12,ny); ctx.lineTo(nx+nw,ny+sz*0.12); ctx.lineTo(nx+nw,ny); ctx.closePath(); ctx.fill();
+      // Lines
+      ctx.strokeStyle='#6a5010'; ctx.lineWidth=Math.max(0.5,sz*0.04);
+      for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(nx+nw*0.12,ny+nh*(0.25+i*0.25));ctx.lineTo(nx+nw*0.82,ny+nh*(0.25+i*0.25));ctx.stroke();}
+      break;
+    }
+  }
+  ctx.restore();
+}
+
+function _markerText(cx,cy,sz,text,color,scale){
+  const s=scale||0.34;
+  ctx.fillStyle=color; ctx.font=`bold ${Math.max(7,Math.floor(sz*s))}px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(text,cx,cy);
+}
+
+function _drawStairs(px,py,sz,stepColor,arrowColor,arrow,up){
+  const steps=4, sw=sz*0.68, sh=sz*0.56;
+  const ox=px+(sz-sw)/2, oy=py+(sz-sh)/2;
+  ctx.fillStyle=stepColor;
+  for(let i=0;i<steps;i++){
+    const w2=up ? sw*(0.4+i*0.16) : sw*(1-i*0.16);
+    const x0=ox+(sw-w2)/2, y0=oy+i*(sh/steps);
+    ctx.fillRect(x0,y0,w2,sh/steps-1);
+  }
+  ctx.fillStyle=arrowColor; ctx.font=`bold ${Math.max(7,Math.floor(sz*0.26))}px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillText(arrow,px+sz/2,py+sz*0.97);
+}
+
+// ─────────────────────────────────────────────────────────
+//  TERRAIN PATTERNS
+// ─────────────────────────────────────────────────────────
+function drawPattern(id,px,py){
+  const sz=tileSize; ctx.save(); ctx.globalAlpha=0.3;
+  const cx_=Math.round(px/sz), cy_=Math.round(py/sz);
+  const seed=cx_*374761393+cy_*1000003;
+  switch(id){
+    case 'stone':{ctx.strokeStyle='#3a3530';ctx.lineWidth=0.5;if((cx_+cy_)%2===0){ctx.beginPath();ctx.moveTo(px+sz*.5,py);ctx.lineTo(px+sz*.5,py+sz*.5);ctx.moveTo(px,py+sz*.5);ctx.lineTo(px+sz*.5,py+sz*.5);ctx.stroke();}else{ctx.beginPath();ctx.moveTo(px,py+sz*.5);ctx.lineTo(px+sz,py+sz*.5);ctx.stroke();}break;}
+    case 'wall':{ctx.globalAlpha=0.55;ctx.fillStyle='#000';ctx.fillRect(px+sz*.12,py+sz*.12,sz*.76,sz*.76);ctx.globalAlpha=0.15;ctx.strokeStyle='#888';ctx.lineWidth=0.5;ctx.strokeRect(px+sz*.12,py+sz*.12,sz*.76,sz*.76);break;}
+    case 'grass':{ctx.strokeStyle='#285018';ctx.lineWidth=0.7;for(let i=0;i<3;i++){const gx=px+sz*(0.2+i*0.3),gy=py+sz*0.72;ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx-sz*.06,gy-sz*.28);ctx.stroke();ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+sz*.06,gy-sz*.28);ctx.stroke();}break;}
+    case 'water':{ctx.strokeStyle='#5090d0';ctx.lineWidth=0.8;ctx.globalAlpha=0.5;ctx.beginPath();ctx.moveTo(px,py+sz*.4);ctx.bezierCurveTo(px+sz*.3,py+sz*.2,px+sz*.6,py+sz*.6,px+sz,py+sz*.4);ctx.stroke();ctx.beginPath();ctx.moveTo(px,py+sz*.7);ctx.bezierCurveTo(px+sz*.3,py+sz*.5,px+sz*.6,py+sz*.9,px+sz,py+sz*.7);ctx.stroke();break;}
+    case 'deepwtr':{ctx.strokeStyle='#1060a0';ctx.lineWidth=0.6;ctx.globalAlpha=0.6;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(px,py+sz*(.25+i*.25));ctx.bezierCurveTo(px+sz*.4,py+sz*(.15+i*.25),px+sz*.6,py+sz*(.35+i*.25),px+sz,py+sz*(.25+i*.25));ctx.stroke();}break;}
+    case 'wood':{ctx.strokeStyle='#6a4020';ctx.lineWidth=0.6;for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(px,py+sz*((i+1)/4));ctx.lineTo(px+sz,py+sz*((i+1)/4));ctx.stroke();}break;}
+    case 'carpet':{ctx.strokeStyle='#601010';ctx.lineWidth=0.6;ctx.beginPath();ctx.moveTo(px+sz*.2,py+sz*.2);ctx.lineTo(px+sz*.8,py+sz*.8);ctx.moveTo(px+sz*.8,py+sz*.2);ctx.lineTo(px+sz*.2,py+sz*.8);ctx.stroke();ctx.globalAlpha=0.15;ctx.strokeStyle='#f0a0a0';ctx.strokeRect(px+sz*.15,py+sz*.15,sz*.7,sz*.7);break;}
+    case 'sand':{ctx.fillStyle='#a07838';for(let i=0;i<7;i++){ctx.fillRect(px+(((seed+i*137)&0xff)/255*sz),py+(((seed+i*251)&0xff)/255*sz),1,1);}break;}
+    case 'dirt':{ctx.fillStyle='#5a3a18';for(let i=0;i<6;i++){ctx.fillRect(px+(((seed+i*193)&0xff)/255*sz),py+(((seed+i*307)&0xff)/255*sz),1.5,1.5);}break;}
+    case 'lava':{ctx.fillStyle='#ff6020';ctx.globalAlpha=0.55;ctx.beginPath();ctx.arc(px+sz*.35,py+sz*.5,sz*.22,0,Math.PI*2);ctx.fill();ctx.globalAlpha=0.3;ctx.beginPath();ctx.arc(px+sz*.7,py+sz*.3,sz*.12,0,Math.PI*2);ctx.fill();break;}
+    case 'ice':{ctx.strokeStyle='#c0e8f0';ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(px+sz*.5,py+sz*.08);ctx.lineTo(px+sz*.5,py+sz*.92);ctx.moveTo(px+sz*.08,py+sz*.5);ctx.lineTo(px+sz*.92,py+sz*.5);ctx.moveTo(px+sz*.22,py+sz*.22);ctx.lineTo(px+sz*.78,py+sz*.78);ctx.moveTo(px+sz*.78,py+sz*.22);ctx.lineTo(px+sz*.22,py+sz*.78);ctx.stroke();break;}
+    case 'road':{ctx.strokeStyle='#7a6a50';ctx.lineWidth=sz*.15;ctx.globalAlpha=0.2;ctx.beginPath();ctx.moveTo(px,py+sz*.5);ctx.lineTo(px+sz,py+sz*.5);ctx.stroke();break;}
+    case 'cave':{ctx.fillStyle='#000';ctx.globalAlpha=0.6;ctx.fillRect(px,py,sz,sz);ctx.globalAlpha=0.12;ctx.strokeStyle='#666';ctx.lineWidth=0.5;ctx.strokeRect(px+1,py+1,sz-2,sz-2);break;}
+    case 'swamp':{ctx.strokeStyle='#1a3010';ctx.lineWidth=0.6;ctx.beginPath();ctx.arc(px+sz*.3,py+sz*.5,sz*.18,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(px+sz*.7,py+sz*.4,sz*.12,0,Math.PI*2);ctx.stroke();ctx.strokeStyle='#5a7020';ctx.lineWidth=0.5;ctx.beginPath();ctx.moveTo(px+sz*.5,py+sz*.8);ctx.lineTo(px+sz*.5,py+sz*.4);ctx.moveTo(px+sz*.5,py+sz*.5);ctx.lineTo(px+sz*.3,py+sz*.3);ctx.stroke();break;}
+    case 'magicfl':{ctx.strokeStyle='#a060e0';ctx.lineWidth=0.5;ctx.globalAlpha=0.6;for(let i=0;i<4;i++){const angle=(i/4)*Math.PI*2;ctx.beginPath();ctx.arc(px+sz*.5+Math.cos(angle)*sz*.25,py+sz*.5+Math.sin(angle)*sz*.25,sz*.08,0,Math.PI*2);ctx.stroke();}ctx.beginPath();ctx.arc(px+sz*.5,py+sz*.5,sz*.12,0,Math.PI*2);ctx.stroke();break;}
+  }
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────────────────
+//  FOG MODE
+// ─────────────────────────────────────────────────────────
+const FOG_HINTS = {
+  dm:     'DM view: fog shown as blue tint.',
+  player: 'Player view: fog is solid black.',
+};
+
+function setFogMode(mode){
+  fogMode=mode;
+  ['dm','player'].forEach(m=>{
+    const btn=document.getElementById('fog-btn-'+m);
+    btn.className='fog-mode-btn'+(mode===m?' mode-'+m:'');
+  });
+  const badge=document.getElementById('fog-badge');
+  if(mode==='player'){badge.className='fog-badge show b-player';badge.textContent='👁 Player View — fog hidden';}
+  else{badge.className='fog-badge';}
+  document.getElementById('fog-hint').textContent=FOG_HINTS[mode]||'';
+  document.getElementById('s-fog').textContent='Fog: '+{dm:'DM View',player:'Player View'}[mode];
+  draw();
+}
+
+function setAllFog(val){pushUndo();fog=Array.from({length:gridH},()=>Array(gridW).fill(val));draw();}
+
+// ─────────────────────────────────────────────────────────
+//  INPUT
+// ─────────────────────────────────────────────────────────
+function getCellFromEvent(e){const r=canvas.getBoundingClientRect();return{x:Math.floor((e.clientX-r.left)/tileSize),y:Math.floor((e.clientY-r.top)/tileSize)};}
+function inBounds(x,y){return x>=0&&x<gridW&&y>=0&&y<gridH;}
+
+function revealAt(x,y){
+  const half=Math.floor(brushSize/2); let changed=false;
+  for(let dy=-half;dy<=half;dy++)for(let dx=-half;dx<=half;dx++){const nx=x+dx,ny=y+dy;if(inBounds(nx,ny)&&fog[ny][nx]){fog[ny][nx]=false;changed=true;}}
+  if(changed)draw();
+}
+
+function applyTool(x,y){
+  if(!inBounds(x,y))return;
+  const half=Math.floor(brushSize/2);
+  for(let dy=-half;dy<=half;dy++)for(let dx=-half;dx<=half;dx++){
+    const nx=x+dx,ny=y+dy;if(!inBounds(nx,ny))continue;
+    if(currentTool==='paint')cells[ny][nx]=currentTerrain;
+    else if(currentTool==='erase')cells[ny][nx]=0;
+    else if(currentTool==='fog')fog[ny][nx]=true;
+  }
+  draw();
+}
+
+function floodFill(x,y,target,replace){
+  if(target===replace)return;
+  const stack=[[x,y]],visited=new Set();
+  while(stack.length){const[cx,cy]=stack.pop(),k=cx+','+cy;if(!inBounds(cx,cy)||visited.has(k)||cells[cy][cx]!==target)continue;visited.add(k);cells[cy][cx]=replace;stack.push([cx+1,cy],[cx-1,cy],[cx,cy+1],[cx,cy-1]);}
+}
+
+// Middle-mouse pan
+canvasArea.addEventListener('mousedown',e=>{if(e.button===1){e.preventDefault();isPanning=true;panStart={x:e.clientX,y:e.clientY,panX,panY};canvasArea.style.cursor='grab';}});
+canvasArea.addEventListener('mousemove',e=>{
+  if(isPanning){panX=panStart.panX+(e.clientX-panStart.x);panY=panStart.panY+(e.clientY-panStart.y);canvas.style.left=panX+'px';canvas.style.top=panY+'px';return;}
+  const{x,y}=getCellFromEvent(e);
+  if(inBounds(x,y)){
+    const unitLabel = scaleUnit==='ft'
+      ? `${Math.round(scaleMeters*3.281)} ft/sq`
+      : `${scaleMeters} m/sq`;
+    document.getElementById('s-pos').textContent=`${x+1} , ${y+1}  (${unitLabel})`;
+  } else {
+    document.getElementById('s-pos').textContent='— , —';
+  }
+
+  // Vision tool: update hover cell and redraw preview
+  if(currentTool==='vision'){
+    if(hoverCell.x!==x||hoverCell.y!==y){hoverCell={x,y};draw();}
+    return;
+  }
+  hoverCell={x:-1,y:-1};
+
+  if(!isPainting)return;
+  applyTool(x,y);
+});
+canvasArea.addEventListener('mouseup',e=>{if(isPanning){isPanning=false;canvasArea.style.cursor='';}isPainting=false;});
+canvasArea.addEventListener('mouseleave',()=>{
+  isPainting=false;
+  document.getElementById('s-pos').textContent='— , —';
+  if(currentTool==='vision'&&(hoverCell.x>=0||hoverCell.y>=0)){hoverCell={x:-1,y:-1};draw();}
+});
+
+canvas.addEventListener('mousedown',e=>{
+  const{x,y}=getCellFromEvent(e); if(!inBounds(x,y))return;
+
+  // Right-click: toggle door open/closed if one exists here
+  if(e.button===2){
+    e.preventDefault();
+    const d=doors.find(d=>d.x===x&&d.y===y);
+    if(d){pushUndo();d.open=!d.open;draw();}
+    return;
+  }
+
+  if(e.button!==0)return;
+
+  // Vision reveal: one click = reveal the radius around party position
+  if(currentTool==='vision'){
+    pushUndo();
+    const changed=doVisionReveal(x,y);
+    if(changed) draw();
+    return;
+  }
+
+  // Door tool: left-click to place/remove door
+  if(currentTool==='door'){
+    pushUndo();
+    const idx=doors.findIndex(d=>d.x===x&&d.y===y);
+    if(idx>=0){
+      doors.splice(idx,1);
+    } else {
+      // Auto-detect orientation from neighboring walls
+      const wallLeft =inBounds(x-1,y)&&(LOS_BLOCKERS.has(cells[y][x-1]));
+      const wallRight=inBounds(x+1,y)&&(LOS_BLOCKERS.has(cells[y][x+1]));
+      const wallAbove=inBounds(x,y-1)&&(LOS_BLOCKERS.has(cells[y-1][x]));
+      const wallBelow=inBounds(x,y+1)&&(LOS_BLOCKERS.has(cells[y+1][x]));
+      const hCount=(wallLeft?1:0)+(wallRight?1:0);
+      const vCount=(wallAbove?1:0)+(wallBelow?1:0);
+      const dir = vCount>hCount ? 'v' : 'h';
+      doors.push({x,y,open:false,dir});
+    }
+    draw();return;
+  }
+
+  if(currentTool==='token'){
+    const idx=tokens.findIndex(t=>t.x===x&&t.y===y);
+    if(idx>=0)tokens.splice(idx,1);
+    else tokens.push({x,y,color:TOKEN_COLORS[currentTokenColor],label:TOKEN_LABELS[tokens.length%TOKEN_LABELS.length]});
+    draw();return;
+  }
+  if(currentTool==='marker'){
+    // Same type on same cell = remove; else add
+    const idx=markers.findIndex(m=>m.x===x&&m.y===y&&m.type===currentMarkerType);
+    if(idx>=0)markers.splice(idx,1);
+    else{
+      // Remove any existing marker of another type on same cell first
+      const other=markers.findIndex(m=>m.x===x&&m.y===y);
+      if(other>=0)markers.splice(other,1);
+      markers.push({x,y,type:currentMarkerType});
+      // Auto-reveal fog around newly placed entrance
+      if(currentMarkerType==='entrance') revealAroundEntrances();
+    }
+    draw();return;
+  }
+  if(currentTool==='fill'){pushUndo();floodFill(x,y,cells[y][x],currentTerrain);draw();return;}
+  pushUndo();isPainting=true;applyTool(x,y);
+});
+
+canvasArea.addEventListener('wheel',e=>{e.preventDefault();if(e.deltaY<0)zoomIn();else zoomOut();},{passive:false});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+// ─────────────────────────────────────────────────────────
+//  UNDO
+// ─────────────────────────────────────────────────────────
+function pushUndo(){
+  undoStack.push({cells:cells.map(r=>[...r]),fog:fog.map(r=>[...r]),tokens:tokens.map(t=>({...t})),markers:markers.map(m=>({...m})),doors:doors.map(d=>({...d}))});
+  if(undoStack.length>MAX_UNDO)undoStack.shift();
+}
+function undo(){
+  if(!undoStack.length)return;
+  const s=undoStack.pop();cells=s.cells;fog=s.fog;tokens=s.tokens;markers=s.markers||[];doors=s.doors||[];draw();
+}
+
+// ─────────────────────────────────────────────────────────
+//  TOOL / TERRAIN / MARKER
+// ─────────────────────────────────────────────────────────
+function setTool(t){
+  currentTool=t;
+  document.querySelectorAll('.tool-btn').forEach(b=>b.classList.toggle('active',b.dataset.tool===t));
+  const cursors={paint:'cursor-paint',fill:'cursor-paint',erase:'cursor-erase',fog:'cursor-fog',token:'cursor-token',marker:'cursor-marker',vision:'cursor-vision',door:'cursor-door'};
+  canvasArea.className=cursors[t]||'cursor-paint';
+  const names={paint:'Paint',fill:'Fill',erase:'Erase',fog:'Add Fog',token:'Token',marker:'Marker',vision:'Vision Reveal',door:'Door'};
+  document.getElementById('s-tool').textContent='Tool: '+(names[t]||t);
+  if(t!=='vision'){hoverCell={x:-1,y:-1};draw();}
+  updateSubStatus();
+}
+
+function selectTerrain(idx){
+  currentTerrain=idx;
+  document.querySelectorAll('.terrain-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  updateSubStatus();
+}
+
+function selectMarker(id){
+  currentMarkerType=id;
+  document.querySelectorAll('.marker-btn').forEach(b=>b.classList.toggle('active',b.dataset.marker===id));
+  updateSubStatus();
+}
+
+function updateSubStatus(){
+  const el=document.getElementById('s-sub');
+  if(currentTool==='marker')el.textContent='Marker: '+(MARKER_TYPES.find(m=>m.id===currentMarkerType)||{label:'?'}).label;
+  else if(currentTool==='token')el.textContent='Token: click to place/remove';
+  else el.textContent='Terrain: '+TERRAINS[currentTerrain].label;
+}
+
+// ─────────────────────────────────────────────────────────
+//  ZOOM
+// ─────────────────────────────────────────────────────────
+function _applyZoom(){
+  const aw=canvasArea.clientWidth,ah=canvasArea.clientHeight-26;
+  canvas.width=gridW*tileSize;canvas.height=gridH*tileSize;
+  panX=Math.floor((aw-canvas.width)/2);panY=Math.floor((ah-canvas.height)/2);
+  canvas.style.left=panX+'px';canvas.style.top=panY+'px';
+  updateZoomStatus();draw();
+}
+function zoomIn(){manualZoom=true;tileSize=Math.min(64,tileSize+(tileSize<20?1:2));_applyZoom();}
+function zoomOut(){manualZoom=true;tileSize=Math.max(4,tileSize-(tileSize<=20?1:2));_applyZoom();}
+function zoomFit(){manualZoom=null;resize();}
+function updateZoomStatus(){document.getElementById('s-zoom').textContent=Math.round(tileSize/24*100)+'%';}
+
+// ─────────────────────────────────────────────────────────
+//  GENERATION
+// ─────────────────────────────────────────────────────────
+function rng(seed){let s=seed>>>0;return()=>{s=Math.imul(s^(s>>>16),0x45d9f3b);s=Math.imul(s^(s>>>16),0x45d9f3b);s^=s>>>16;return(s>>>0)/0xffffffff;};}
+
+// Place a door at (x,y) — auto-detect orientation from neighbor walls
+function placeDoor(x,y,forceOpen){
+  if(!inBounds(x,y)) return;
+  if(doors.some(d=>d.x===x&&d.y===y)) return;
+  const wL=inBounds(x-1,y)&&LOS_BLOCKERS.has(cells[y][x-1]);
+  const wR=inBounds(x+1,y)&&LOS_BLOCKERS.has(cells[y][x+1]);
+  const wA=inBounds(x,y-1)&&LOS_BLOCKERS.has(cells[y-1][x]);
+  const wB=inBounds(x,y+1)&&LOS_BLOCKERS.has(cells[y+1][x]);
+  const dir=((wA?1:0)+(wB?1:0))>((wL?1:0)+(wR?1:0))?'v':'h';
+  doors.push({x,y,open:forceOpen||false,dir});
+}
+
+function generateMap(){
+  const type=document.getElementById('gen-type').value;
+  const density=parseInt(document.getElementById('gen-density').value)/100;
+  pushUndo();
+  cells=Array.from({length:gridH},()=>Array(gridW).fill(0));
+  fog=Array.from({length:gridH},()=>Array(gridW).fill(true));
+  tokens=[];markers=[];doors=[];
+  ({cave,dungeon,building,forest,village,ruins,coast})[type]?.(density);
+  revealAroundEntrances();
+  draw();
+}
+
+function cave(density){
+  const rand=rng(Date.now());
+  for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++)cells[y][x]=rand()<density?11:1;
+  for(let iter=0;iter<5;iter++){const next=cells.map(r=>[...r]);for(let y=1;y<gridH-1;y++)for(let x=1;x<gridW-1;x++){let w=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if(cells[y+dy][x+dx]===11)w++;next[y][x]=w>=5?11:1;}cells=next;}
+  for(let y=0;y<gridH;y++)cells[y][0]=cells[y][gridW-1]=11;
+  for(let x=0;x<gridW;x++)cells[0][x]=cells[gridH-1][x]=11;
+  const rand2=rng(Date.now()+1);
+  for(let y=1;y<gridH-1;y++)for(let x=1;x<gridW-1;x++)if(cells[y][x]===1&&rand2()<0.12)cells[y][x]=2;
+  // Auto-markers: entrance top-left-ish floor cell, exit bottom-right-ish
+  const floor=[];for(let y=1;y<gridH-1;y++)for(let x=1;x<gridW-1;x++)if(cells[y][x]===1)floor.push({x,y});
+  if(floor.length>2){markers.push({...floor[0],type:'entrance'});markers.push({...floor[floor.length-1],type:'exit'});}
+  // Loot in middle-ish cells
+  const rand3=rng(Date.now()+2);
+  floor.slice(Math.floor(floor.length*0.3),Math.floor(floor.length*0.7)).forEach(c=>{if(rand3()<0.04)markers.push({...c,type:'loot'});});
+}
+
+function dungeon(density){
+  const rand=rng(Date.now());
+  for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++)cells[y][x]=5;
+  const rooms=[];
+  for(let a=0;a<40;a++){const w=3+Math.floor(rand()*6),h=3+Math.floor(rand()*5),rx=1+Math.floor(rand()*(gridW-w-2)),ry=1+Math.floor(rand()*(gridH-h-2));let ok=true;for(const r of rooms)if(rx<r.x+r.w+2&&rx+w>r.x-2&&ry<r.y+r.h+2&&ry+h>r.y-2){ok=false;break;}if(ok){rooms.push({x:rx,y:ry,w,h});for(let y=ry;y<ry+h;y++)for(let x=rx;x<rx+w;x++)cells[y][x]=rand()<0.05?2:1;}}
+  // Corridors + doors at corridor-room junctions
+  for(let i=0;i<rooms.length-1;i++){
+    let cx=Math.floor(rooms[i].x+rooms[i].w/2),cy=Math.floor(rooms[i].y+rooms[i].h/2);
+    const bx=Math.floor(rooms[i+1].x+rooms[i+1].w/2),by=Math.floor(rooms[i+1].y+rooms[i+1].h/2);
+    // record turn point for door placement
+    const turnX=bx, turnY=cy;
+    while(cx!==bx){if(inBounds(cx,cy))cells[cy][cx]=1;cx+=cx<bx?1:-1;}
+    while(cy!==by){if(inBounds(cx,cy))cells[cy][cx]=1;cy+=cy<by?1:-1;}
+    // Place a door near where corridor meets destination room wall
+    if(rand()<0.7) placeDoor(turnX,turnY);
+  }
+  for(let y=1;y<gridH-1;y++)for(let x=1;x<gridW-1;x++)if(cells[y][x]===5){const adj=[[0,1],[0,-1],[1,0],[-1,0]].filter(([dx,dy])=>cells[y+dy]&&cells[y+dy][x+dx]===1).length;if(adj>=2&&rand()<0.3)cells[y][x]=1;}
+  if(rooms.length>0){const r0=rooms[0];markers.push({x:Math.floor(r0.x+r0.w/2),y:Math.floor(r0.y+r0.h/2),type:'entrance'});}
+  if(rooms.length>1){const rl=rooms[rooms.length-1];markers.push({x:Math.floor(rl.x+rl.w/2),y:Math.floor(rl.y+rl.h/2),type:'exit'});}
+  const rand2=rng(Date.now()+9);
+  rooms.slice(1,-1).forEach(r=>{const t=rand2();if(t<0.3)markers.push({x:Math.floor(r.x+r.w/2),y:Math.floor(r.y+r.h/2),type:'loot'});else if(t<0.45)markers.push({x:Math.floor(r.x+r.w/2),y:Math.floor(r.y+r.h/2),type:'trap'});});
+}
+
+function building(density){
+  const rand=rng(Date.now());
+  for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++)cells[y][x]=3;
+  const bx=2,by=2,bw=gridW-4,bh=gridH-4;
+  for(let y=by;y<by+bh;y++)for(let x=bx;x<bx+bw;x++)cells[y][x]=(y===by||y===by+bh-1||x===bx||x===bx+bw-1)?5:(rand()<0.04?15:6);
+  const doorX=bx+2+Math.floor(rand()*(bw-4));cells[by][doorX]=6;
+  markers.push({x:doorX,y:by,type:'entrance'});
+  placeDoor(doorX,by);
+  const backDoorX=bx+2+Math.floor(rand()*(bw-4));cells[by+bh-1][backDoorX]=6;
+  markers.push({x:backDoorX,y:by+bh-1,type:'exit'});
+  placeDoor(backDoorX,by+bh-1);
+  const numWalls=1+Math.floor(density*3),wallYs=[];
+  for(let i=0;i<numWalls;i++){
+    const wallY=by+3+Math.floor(rand()*(bh-6));
+    if(wallYs.includes(wallY))continue;
+    wallYs.push(wallY);
+    const gapX=bx+1+Math.floor(rand()*(bw-2));
+    for(let x=bx+1;x<bx+bw-1;x++)cells[wallY][x]=5;
+    cells[wallY][gapX]=6;
+    placeDoor(gapX,wallY);
+  }
+  if(wallYs.length>0) markers.push({x:bx+2,y:wallYs[0]+1,type:'loot'});
+}
+
+function forest(density){
+  const rand=rng(Date.now());
+  for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++){const fx=(x-gridW/2)/(gridW/2),fy=(y-gridH/2)/(gridH/2),dist=Math.sqrt(fx*fx+fy*fy);cells[y][x]=(rand()<density*(1.1-dist*.6))?5:3;}
+  const cx=Math.floor(gridW/2),cy=Math.floor(gridH/2),cr=Math.floor(Math.min(gridW,gridH)*0.15);
+  for(let y=cy-cr;y<=cy+cr;y++)for(let x=cx-cr;x<=cx+cr;x++)if(inBounds(x,y)&&Math.sqrt((x-cx)**2+(y-cy)**2)<cr)cells[y][x]=3;
+  let px=cx,py=gridH-1;while(py>cy){if(inBounds(px,py))cells[py][px]=2;py--;if(rand()<.3)px+=rand()<.5?1:-1;px=Math.max(1,Math.min(gridW-2,px));}
+  markers.push({x:cx,y:gridH-1,type:'entrance'});
+  markers.push({x:cx,y:cy,type:'loot'});
+  markers.push({x:cx,y:cy-1,type:'secret'});
+}
+
+function village(){
+  const rand=rng(Date.now());
+  for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++)cells[y][x]=3;
+  const cx=Math.floor(gridW/2),cy=Math.floor(gridH/2);
+  for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++)if(inBounds(cx+dx,cy+dy))cells[cy+dy][cx+dx]=10;
+  for(let x=0;x<gridW;x++)if(inBounds(x,cy))cells[cy][x]=10;
+  for(let y=0;y<gridH;y++)if(inBounds(cx,y))cells[y][cx]=10;
+  const bpos=[[cx-10,cy-9],[cx+4,cy-9],[cx-10,cy+4],[cx+4,cy+4],[cx-10,cy-2],[cx+4,cy-2]];
+  bpos.forEach(([bx,by])=>{const bw=4+Math.floor(rand()*3),bh=4+Math.floor(rand()*3);for(let y=by;y<by+bh;y++)for(let x=bx;x<bx+bw;x++){if(!inBounds(x,y))return;cells[y][x]=(y===by||y===by+bh-1||x===bx||x===bx+bw-1)?5:6;}const doorSide=rand()<.5?by+bh-1:by;const doorX=bx+1+Math.floor(rand()*(bw-2));if(inBounds(doorX,doorSide))cells[doorSide][doorX]=6;});
+  cells[cy][cx]=4;
+  markers.push({x:0,y:cy,type:'entrance'});markers.push({x:gridW-1,y:cy,type:'exit'});
+  markers.push({x:cx,y:cy,type:'note'});
+}
+
+function ruins(density){
+  const rand=rng(Date.now());
+  for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++)cells[y][x]=2;
+  for(let a=0;a<25;a++){const w=2+Math.floor(rand()*5),h=2+Math.floor(rand()*5),rx=Math.floor(rand()*(gridW-w)),ry=Math.floor(rand()*(gridH-h));for(let y=ry;y<ry+h;y++)for(let x=rx;x<rx+w;x++){if(!inBounds(x,y))continue;cells[y][x]=(y===ry||y===ry+h-1||x===rx||x===rx+w-1)&&rand()<(1-density*.5)?5:1;}}
+  for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++)if(cells[y][x]===5&&rand()<density*0.3)cells[y][x]=2;
+  const rand2=rng(Date.now()+3);
+  for(let i=0;i<3;i++){const px=3+Math.floor(rand2()*(gridW-6)),py=3+Math.floor(rand2()*(gridH-6)),r=1+Math.floor(rand2()*2);for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++)if(inBounds(px+dx,py+dy)&&Math.sqrt(dx*dx+dy*dy)<=r)cells[py+dy][px+dx]=4;}
+  for(let i=0;i<4;i++)markers.push({x:3+Math.floor(rand2()*(gridW-6)),y:3+Math.floor(rand2()*(gridH-6)),type:rand2()<0.4?'loot':rand2()<0.5?'secret':'trap'});
+}
+
+function coast(density){
+  const rand=rng(Date.now());
+  const shore=Array(gridH).fill(0).map((_,y)=>Math.floor(gridW*0.45+Math.sin(y*0.4)*2+(rand()-.5)*3));
+  for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++){if(x>shore[y]+2)cells[y][x]=4;else if(x===shore[y]+2||x===shore[y]+1)cells[y][x]=7;else if(x===shore[y])cells[y][x]=rand()<.5?7:3;else cells[y][x]=rand()<density*.4?5:3;}
+  for(let y=0;y<gridH;y++)for(let x=0;x<gridW;x++)if(cells[y][x]===4&&x>shore[y]+8)cells[y][x]=14;
+  const dockY=Math.floor(gridH/2);
+  for(let x=shore[dockY];x<=shore[dockY]+4;x++)if(inBounds(x,dockY))cells[dockY][x]=6;
+  markers.push({x:shore[dockY],y:dockY,type:'entrance'});
+}
+
+// ─────────────────────────────────────────────────────────
+//  SAVE / EXPORT
+// ─────────────────────────────────────────────────────────
+function getExportData(){return{version:3,gridW,gridH,cells,fog,tokens,markers,doors,scaleMeters,scaleUnit,ts:Date.now()};}
+
+function downloadMap(){const a=document.createElement('a');a.download='dnd-map.png';a.href=canvas.toDataURL('image/png');a.click();}
+function downloadMapNoFog(){const was=fogMode;setFogMode('dm');const a=document.createElement('a');a.download='dnd-map-nofog.png';a.href=canvas.toDataURL('image/png');a.click();setFogMode(was);}
+function exportJSON(){const b=new Blob([JSON.stringify(getExportData(),null,2)],{type:'application/json'});const a=document.createElement('a');a.download='dnd-map.json';a.href=URL.createObjectURL(b);a.click();}
+function importJSON(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d.cells||!d.gridW)throw new Error('Invalid');gridW=d.gridW;gridH=d.gridH;cells=d.cells;fog=d.fog||Array.from({length:gridH},()=>Array(gridW).fill(false));tokens=d.tokens||[];markers=d.markers||[];doors=d.doors||[];if(d.scaleMeters){scaleMeters=d.scaleMeters;scaleUnit=d.scaleUnit||'m';document.getElementById('scale-meters').value=scaleMeters;document.getElementById('scale-unit').value=scaleUnit;updateScaleUI();}document.getElementById('grid-size').value=gridW;manualZoom=null;resize();}catch(err){alert('Load failed: '+err.message);}};r.readAsText(f);};inp.click();
+}
+
+const SAVE_PREFIX='dndmap_v2_';
+function getSaves(){const s=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith(SAVE_PREFIX))try{s.push({key:k,...JSON.parse(localStorage.getItem(k))});}catch(e){}}return s.sort((a,b)=>b.ts-a.ts);}
+
+let saveNameInput=null;
+function openSaveModal(){
+  document.getElementById('modal-title').textContent='Save Map';document.getElementById('modal-confirm').textContent='Save';document.getElementById('modal-confirm').onclick=doSave;
+  document.getElementById('modal-body').innerHTML='<input type="text" id="save-name-input" placeholder="Map name..." /><p style="font-size:10px;color:#6a5020;margin-top:-6px;">Saves to browser local storage.</p>';
+  saveNameInput=document.getElementById('save-name-input');saveNameInput.value='Map '+new Date().toLocaleDateString();
+  document.getElementById('modal-overlay').classList.add('open');saveNameInput.focus();
+  saveNameInput.addEventListener('keydown',e=>{if(e.key==='Enter')doSave();});
+}
+function doSave(){const name=(saveNameInput?saveNameInput.value:'').trim()||'Unnamed';try{localStorage.setItem(SAVE_PREFIX+Date.now(),JSON.stringify({name,...getExportData()}));closeModal();}catch(e){alert('Save failed: '+e.message);}}
+function openLoadModal(){
+  document.getElementById('modal-title').textContent='Load Map';document.getElementById('modal-confirm').textContent='Close';document.getElementById('modal-confirm').onclick=closeModal;
+  const saves=getSaves(),body=document.getElementById('modal-body');
+  if(!saves.length){body.innerHTML='<div class="no-saves">No saved maps found.</div>';}
+  else{body.innerHTML='<div id="saves-list"></div>';const list=document.getElementById('saves-list');saves.forEach(s=>{const item=document.createElement('div');item.className='save-item';item.innerHTML=`<div><div>${s.name||'Unnamed'}</div><div class="save-meta">${new Date(s.ts).toLocaleDateString()} · ${s.gridW}×${s.gridH}</div></div><div class="save-item-actions"><button class="save-item-btn" onclick="loadSave('${s.key}')">Load</button><button class="save-item-btn del" onclick="deleteSave('${s.key}')">✕</button></div>`;list.appendChild(item);});}
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function loadSave(key){try{const d=JSON.parse(localStorage.getItem(key));gridW=d.gridW;gridH=d.gridH;cells=d.cells;fog=d.fog||Array.from({length:gridH},()=>Array(gridW).fill(false));tokens=d.tokens||[];markers=d.markers||[];doors=d.doors||[];if(d.scaleMeters){scaleMeters=d.scaleMeters;scaleUnit=d.scaleUnit||'m';document.getElementById('scale-meters').value=scaleMeters;document.getElementById('scale-unit').value=scaleUnit;updateScaleUI();}document.getElementById('grid-size').value=gridW;manualZoom=null;closeModal();resize();}catch(e){alert('Load failed: '+e.message);}}
+function deleteSave(key){if(!confirm('Delete?'))return;localStorage.removeItem(key);openLoadModal();}
+function handleOverlayClick(e){if(e.target===document.getElementById('modal-overlay'))closeModal();}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+
+// ─────────────────────────────────────────────────────────
+//  MAP ACTIONS
+// ─────────────────────────────────────────────────────────
+function clearMap(){if(!confirm('Clear map?'))return;cells=Array.from({length:gridH},()=>Array(gridW).fill(0));fog=Array.from({length:gridH},()=>Array(gridW).fill(false));tokens=[];markers=[];doors=[];undoStack=[];draw();}
+function changeGridSize(){
+  const sz=parseInt(document.getElementById('grid-size').value);
+  cells=Array.from({length:sz},(_,y)=>Array.from({length:sz},(_,x)=>(y<gridH&&x<gridW)?cells[y][x]:0));
+  fog=Array.from({length:sz},(_,y)=>Array.from({length:sz},(_,x)=>(y<gridH&&x<gridW)?fog[y][x]:false));
+  gridW=gridH=sz;
+  tokens=tokens.filter(t=>t.x<gridW&&t.y<gridH);
+  markers=markers.filter(m=>m.x<gridW&&m.y<gridH);
+  doors=doors.filter(d=>d.x<gridW&&d.y<gridH);
+  manualZoom=null;resize();
+}
+
+// ─────────────────────────────────────────────────────────
+//  KEYBOARD
+// ─────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.ctrlKey&&e.key==='s'){e.preventDefault();openSaveModal();return;}
+  if(e.ctrlKey&&e.key==='z'){e.preventDefault();undo();return;}
+  const toolMap={p:'paint',f:'fill',e:'erase',m:'marker',t:'token',g:'fog',v:'vision',d:'door'};
+  if(toolMap[e.key]){setTool(toolMap[e.key]);return;}
+  if(e.key==='+'||e.key==='=')zoomIn();
+  if(e.key==='-')zoomOut();
+  if(e.key==='0')zoomFit();
+  const n=parseInt(e.key);
+  if(n>=1&&n<=9&&!e.ctrlKey)selectTerrain(n);
+});
+
+// ─────────────────────────────────────────────────────────
+//  BUILD UI
+// ─────────────────────────────────────────────────────────
+function buildTerrainGrid(){
+  const grid=document.getElementById('terrain-grid');
+  TERRAINS.forEach((t,i)=>{const b=document.createElement('button');b.className='terrain-btn'+(i===1?' active':'');b.style.background=t.color;b.title=t.label;b.onclick=()=>selectTerrain(i);grid.appendChild(b);});
+}
+function buildMarkerGrid(){
+  const grid=document.getElementById('marker-grid');
+  MARKER_TYPES.forEach((m,i)=>{
+    const b=document.createElement('button');b.className='marker-btn'+(i===0?' active':'');b.dataset.marker=m.id;
+    b.innerHTML=`<span class="micon">${m.emoji}</span>${m.label}`;
+    b.onclick=()=>{selectMarker(m.id);setTool('marker');};
+    grid.appendChild(b);
+  });
+}
+function buildTokenColors(){
+  const wrap=document.getElementById('token-colors');
+  TOKEN_COLORS.forEach((c,i)=>{const b=document.createElement('div');b.className='tok-color'+(i===0?' active':'');b.style.background=c;b.title='Token color '+(i+1);b.onclick=()=>{currentTokenColor=i;document.querySelectorAll('.tok-color').forEach((x,j)=>x.classList.toggle('active',j===i));};wrap.appendChild(b);});
+}
+
+// ─────────────────────────────────────────────────────────
+//  BOOT
+// ─────────────────────────────────────────────────────────
+window.addEventListener('resize',()=>{if(!manualZoom)resize();});
+buildTerrainGrid();
+buildMarkerGrid();
+buildTokenColors();
+initGrid();
+</script>
+</body>
+</html>
