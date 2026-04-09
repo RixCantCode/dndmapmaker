@@ -204,15 +204,13 @@ All markers are hidden from players when covered by fog.
 
 ## Changelog
 
-### v1.4
+### v1.3
 - **Select tool** (`S`) — click and drag any token, marker, or door to reposition it without needing to match colors or switch settings
 - **Right-click to remove** — right-clicking any token, marker, or door removes it, regardless of active tool
 - **Enemy tokens** — new unlabeled square tokens with an X mark; clicking an enemy color swatch auto-selects the Token tool; count is never shown so hidden enemies aren't spoiled
 - **Fog All / Reveal All moved** to a dedicated top bar above the canvas, clearly separated from the Vision Reveal tool and Vision section
 - **Door left-click simplified** — left-click an empty tile to place, left-click an existing door to toggle open/closed (right-click to remove)
 - Player token section renamed and clarified; enemy token section added below it
-
-### v1.3
 - **Doors** — place doors that render as horizontal or vertical bars; auto-detect orientation from adjacent walls; toggle open/closed
 - **Wall-aware Line of Sight** — Vision Reveal now raycasts through the map; walls and closed doors block vision; LOS shadow shown in preview
 - Generated dungeons and buildings auto-place doors at doorways and corridor junctions
