@@ -1,5 +1,5 @@
 # DnD Map Maker
-**Cartographer's Workshop v1.4**
+**Cartographer's Workshop v1.3**
 
 A self-contained, browser-based map maker for tabletop RPG sessions. No installation, no account, no internet required after download. Open `dnd-map-maker.html` in any modern browser and start drawing.
 
