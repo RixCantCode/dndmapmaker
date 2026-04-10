@@ -204,6 +204,10 @@ All markers are hidden from players when covered by fog.
 
 ## Changelog
 
+### v1.4
+- **Initiative and Turn Order Support** — Menu on the right-hand side accepts values for initiative. These can be saved and loaded with your map.
+- **Enemy Symbol Distinction** — Menu below enemy tokens. Add a shape to enemies to make them distinct, but not numbered to prevent spoiling hidden enemies
+
 ### v1.3
 - **Select tool** (`S`) — click and drag any token, marker, or door to reposition it without needing to match colors or switch settings
 - **Right-click to remove** — right-clicking any token, marker, or door removes it, regardless of active tool
